@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: AutoMagickal Post Producer
-Plugin URI: https://example.com/automagickal-post-producer
+Plugin URI: https://lancesmith.cc
 Description: Automatically generates posts using OpenAI GPT-4O-Mini for text and DALL-E 3 for images at scheduled times.
 Version: 1.4
 Author: Lance Smith
-Author URI: https://example.com
+Author URI: https://lancesmith.cc
 License: GPL2
 */
 
