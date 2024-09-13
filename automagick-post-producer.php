@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: AutoMagickal Post Producer
-Plugin URI: https://lancesmith.cc
+Plugin URI: https://www.genexmarketing.com
 Description: Automatically generates posts using OpenAI GPT-4O-Mini for text and DALL-E 3 for images at scheduled times.
-Version: 1.4
+Version: 1.46
 Author: Lance Smith
-Author URI: https://lancesmith.cc
+Author URI: https://www.genexmarketing.com
 License: GPL2
 */
 
@@ -109,29 +109,30 @@ class AutoMagickal_Post_Producer {
     }
 
     public function sanitize_options($options) {
+        $sanitized_options = array();
         if (isset($options['api_key'])) {
-            $options['api_key'] = $this->encrypt_api_key(sanitize_text_field($options['api_key']));
+            $sanitized_options['api_key'] = $this->encrypt_api_key(sanitize_text_field($options['api_key']));
         }
         if (isset($options['topic_prompt'])) {
-            $options['topic_prompt'] = sanitize_textarea_field($options['topic_prompt']);
+            $sanitized_options['topic_prompt'] = sanitize_textarea_field($options['topic_prompt']);
         }
         if (isset($options['image_style_prompt'])) {
-            $options['image_style_prompt'] = sanitize_textarea_field($options['image_style_prompt']);
+            $sanitized_options['image_style_prompt'] = sanitize_textarea_field($options['image_style_prompt']);
         }
         if (isset($options['frequency'])) {
-            $options['frequency'] = sanitize_text_field($options['frequency']);
+            $sanitized_options['frequency'] = sanitize_text_field($options['frequency']);
         }
         if (isset($options['time_of_day'])) {
-            $options['time_of_day'] = sanitize_text_field($options['time_of_day']);
+            $sanitized_options['time_of_day'] = sanitize_text_field($options['time_of_day']);
         }
         if (isset($options['post_type'])) {
-            $options['post_type'] = sanitize_text_field($options['post_type']);
+            $sanitized_options['post_type'] = sanitize_text_field($options['post_type']);
         }
 
         wp_clear_scheduled_hook($this->cron_hook);
         $this->schedule_event();
 
-        return $options;
+        return $sanitized_options;
     }
 
     public function api_key_field() {
@@ -139,7 +140,7 @@ class AutoMagickal_Post_Producer {
         $api_key_encrypted = isset($options['api_key']) ? $options['api_key'] : '';
         $api_key = $this->decrypt_api_key($api_key_encrypted);
 
-        echo '<input type="password" name="' . $this->option_name . '[api_key]" value="' . esc_attr($api_key) . '" />';
+        echo '<input type="password" name="' . esc_attr($this->option_name) . '[api_key]" value="' . esc_attr($api_key) . '" />';
 
         if (!empty($api_key)) {
             $test_result = $this->test_api_key($api_key);
@@ -150,13 +151,13 @@ class AutoMagickal_Post_Producer {
     public function topic_prompt_field() {
         $options = get_option($this->option_name);
         $topic_prompt = isset($options['topic_prompt']) ? $options['topic_prompt'] : '';
-        echo '<textarea name="' . $this->option_name . '[topic_prompt]" rows="5" cols="50">' . esc_textarea($topic_prompt) . '</textarea>';
+        echo '<textarea name="' . esc_attr($this->option_name) . '[topic_prompt]" rows="5" cols="50">' . esc_textarea($topic_prompt) . '</textarea>';
     }
 
     public function image_style_prompt_field() {
         $options = get_option($this->option_name);
         $image_style_prompt = isset($options['image_style_prompt']) ? $options['image_style_prompt'] : '';
-        echo '<textarea name="' . $this->option_name . '[image_style_prompt]" rows="5" cols="50">' . esc_textarea($image_style_prompt) . '</textarea>';
+        echo '<textarea name="' . esc_attr($this->option_name) . '[image_style_prompt]" rows="5" cols="50">' . esc_textarea($image_style_prompt) . '</textarea>';
     }
 
     public function frequency_field() {
@@ -164,7 +165,7 @@ class AutoMagickal_Post_Producer {
         $frequency = isset($options['frequency']) ? $options['frequency'] : 'daily';
         $schedules = wp_get_schedules();
 
-        echo '<select name="' . $this->option_name . '[frequency]">';
+        echo '<select name="' . esc_attr($this->option_name) . '[frequency]">';
         foreach ($schedules as $key => $schedule) {
             echo '<option value="' . esc_attr($key) . '" ' . selected($frequency, $key, false) . '>' . esc_html($schedule['display']) . '</option>';
         }
@@ -174,7 +175,7 @@ class AutoMagickal_Post_Producer {
     public function time_of_day_field() {
         $options = get_option($this->option_name);
         $time_of_day = isset($options['time_of_day']) ? $options['time_of_day'] : '00:00';
-        echo '<input type="time" name="' . $this->option_name . '[time_of_day]" value="' . esc_attr($time_of_day) . '" />';
+        echo '<input type="time" name="' . esc_attr($this->option_name) . '[time_of_day]" value="' . esc_attr($time_of_day) . '" />';
     }
 
     public function post_type_field() {
@@ -182,7 +183,7 @@ class AutoMagickal_Post_Producer {
         $post_type = isset($options['post_type']) ? $options['post_type'] : 'post';
         $post_types = get_post_types(array('public' => true), 'objects');
 
-        echo '<select name="' . $this->option_name . '[post_type]">';
+        echo '<select name="' . esc_attr($this->option_name) . '[post_type]">';
         foreach ($post_types as $key => $pt) {
             echo '<option value="' . esc_attr($key) . '" ' . selected($post_type, $key, false) . '>' . esc_html($pt->labels->singular_name) . '</option>';
         }
@@ -228,7 +229,8 @@ class AutoMagickal_Post_Producer {
     private function encrypt_api_key($api_key) {
         $encryption_key = wp_salt('auth');
         $iv = substr(hash('sha256', $encryption_key), 0, 16);
-        return openssl_encrypt($api_key, 'AES-256-CBC', $encryption_key, 0, $iv);
+        $encrypted = openssl_encrypt($api_key, 'AES-256-CBC', $encryption_key, 0, $iv);
+        return $encrypted !== false ? $encrypted : '';
     }
 
     private function decrypt_api_key($encrypted_api_key) {
@@ -237,13 +239,14 @@ class AutoMagickal_Post_Producer {
         }
         $encryption_key = wp_salt('auth');
         $iv = substr(hash('sha256', $encryption_key), 0, 16);
-        return openssl_decrypt($encrypted_api_key, 'AES-256-CBC', $encryption_key, 0, $iv);
+        $decrypted = openssl_decrypt($encrypted_api_key, 'AES-256-CBC', $encryption_key, 0, $iv);
+        return $decrypted !== false ? $decrypted : '';
     }
 
     private function test_api_key($api_key) {
         $response = wp_remote_get('https://api.openai.com/v1/models', array(
             'headers' => array('Authorization' => 'Bearer ' . $api_key),
-            'timeout' => 10,
+            'timeout' => 15,
         ));
 
         return !is_wp_error($response) && wp_remote_retrieve_response_code($response) == 200;
@@ -311,17 +314,19 @@ class AutoMagickal_Post_Producer {
             $this->log_error('Failed to generate image.');
         }
 
+        $result = array(
+            'text_generated' => 1,
+            'image_generated' => $image_url ? 2 : 0,
+            'image_url' => $image_url,
+            'image_posted' => $image_result === true ? 1 : 0,
+            'post_created' => 1,
+            'post_id' => $post_id,
+            'error_log' => $this->get_error_log(),
+            'image_prompt' => $image_prompt
+        );
+
         if ($is_test) {
-            return array(
-                'text_generated' => 1,
-                'image_generated' => $image_url ? 2 : 0,
-                'image_url' => $image_url,
-                'image_posted' => $image_result === true ? 1 : 0,
-                'post_created' => 1,
-                'post_id' => $post_id,
-                'error_log' => $this->get_error_log(),
-                'image_prompt' => $image_prompt
-            );
+            return $result;
         }
 
         return true;
@@ -350,7 +355,7 @@ class AutoMagickal_Post_Producer {
             return false;
         }
 
-        $body = json_decode($response['body'], true);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
         if (isset($body['choices'][0]['message']['content'])) {
             return trim($body['choices'][0]['message']['content']);
         } else {
@@ -368,10 +373,8 @@ class AutoMagickal_Post_Producer {
 
         $image_prompt = $this->generate_text($this->decrypt_api_key(get_option($this->option_name)['api_key']), $prompt);
         
-        // Ensure the prompt is not too long
         $image_prompt = wp_trim_words($image_prompt, 15, '');
         
-        // Append style prompt
         $image_prompt .= ', ' . $style_prompt;
 
         return $image_prompt;
@@ -401,7 +404,7 @@ class AutoMagickal_Post_Producer {
             return false;
         }
 
-        $body = json_decode($response['body'], true);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
 
         if (isset($body['data'][0]['url'])) {
             return $body['data'][0]['url'];
@@ -495,6 +498,7 @@ class AutoMagickal_Post_Producer {
             $message .= "Post created: " . ($result['post_created'] ? 'Yes' : 'No') . "\n";
             if ($result['post_created']) {
                 $message .= "Post ID: " . $result['post_id'] . "\n";
+                $message .= "Post URL: " . get_permalink($result['post_id']) . "\n";
             }
             $message .= "Image Prompt: " . $result['image_prompt'] . "\n";
             if (!empty($result['error_log'])) {
